@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wissance.Hydra.Tcp", "Wissance.Hydra.Tcp\Wissance.Hydra.Tcp.csproj", "{C51BBEF1-B0FC-4D47-BB3C-1D9496752373}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wissance.Hydra.Common", "Wissance.Hydra.Common\Wissance.Hydra.Common.csproj", "{4734761C-4D4A-488A-B160-2F2D857C870C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C51BBEF1-B0FC-4D47-BB3C-1D9496752373}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C51BBEF1-B0FC-4D47-BB3C-1D9496752373}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C51BBEF1-B0FC-4D47-BB3C-1D9496752373}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C51BBEF1-B0FC-4D47-BB3C-1D9496752373}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4734761C-4D4A-488A-B160-2F2D857C870C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4734761C-4D4A-488A-B160-2F2D857C870C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4734761C-4D4A-488A-B160-2F2D857C870C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4734761C-4D4A-488A-B160-2F2D857C870C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
