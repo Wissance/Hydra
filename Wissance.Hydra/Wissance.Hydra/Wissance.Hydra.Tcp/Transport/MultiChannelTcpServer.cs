@@ -40,7 +40,7 @@ namespace Wissance.Hydra.Tcp.Transport
             _packetHandler = packetHandler;
             // todo(umv): init server channels
             _clients = new ConcurrentDictionary<Guid, ClientInfo>();
-            _serverChannels = new Dictionary<Guid, TcpChannel>();
+            _serverChannels = new ConcurrentDictionary<Guid, TcpChannel>();
             _logger = loggerFactory.CreateLogger<MultiChannelTcpServer>();
         }
 
@@ -55,8 +55,6 @@ namespace Wissance.Hydra.Tcp.Transport
                     // this means that channel was already initialized, ensure that channel is not started
                     if (_serverChannels.ContainsKey(channelCfg.ChannelId))
                     {
-                        
-                        // _serverChannels[channelCfg.ChannelId].Server.
                         if (_serverChannels[channelCfg.ChannelId].Status)
                         {
                             // todo(umv): server channel is running, handle this properly
@@ -100,7 +98,7 @@ namespace Wissance.Hydra.Tcp.Transport
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.NoDelay, true);
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.DontFragment, true);
                     
-                    _serverChannels[channelCfg.ChannelId].Listener.Start();
+                    _serverChannels[channelCfg.ChannelId].Listener.Start(ConnectionsQueueSize);
                     _serverChannels[channelCfg.ChannelId].Status = true;
 
                     _serverChannels[channelCfg.ChannelId].ChannelProcessor.IsBackground = true;
@@ -289,7 +287,7 @@ namespace Wissance.Hydra.Tcp.Transport
                 return;
             }
 
-            Task processClientsConnectTask = new Task(async () =>
+            Task processClientsConnectTask = new Task(async () => 
             {
                 _logger.LogDebug("Process client connect task started");
                 while (!context.Channel.Cancellation.IsCancellationRequested)
@@ -315,6 +313,7 @@ namespace Wissance.Hydra.Tcp.Transport
                     catch (Exception e)
                     {
                         // todo (UMV): think about err handling
+                        _logger.LogError($"An error \"{e.Message}\" occurred during processing client connect");
                     }
                 }
 
@@ -356,7 +355,6 @@ namespace Wissance.Hydra.Tcp.Transport
                     {
                         try
                         {
-
                             bool hasIncomingData = client.Value.Client.Client.Poll(10, SelectMode.SelectRead);
                             if (hasIncomingData)
                             {
@@ -441,6 +439,8 @@ namespace Wissance.Hydra.Tcp.Transport
             // https://learn.microsoft.com/en-us/dotnet/api/system.net.security.sslstream?view=net-7.0
             return sslStream;
         }
+
+        private const int ConnectionsQueueSize = 100000;
 
         public IList<ClientInfo> GetClientsStats { get; set; }
 
