@@ -21,14 +21,14 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
         }
 
         [Theory]
-        [InlineData(100, 500)]
-        [InlineData(500, 500)]
-        [InlineData(1000,500)]
-        [InlineData(5000,1000)]
-        [InlineData(10000, 2000)]
-        [InlineData(20000, 2000)]
-        [InlineData(50000, 5000)]
-        public async Task TestCollectMultipleClientsToOneChannelServer(int clientsNumber, int delayClientsWait)
+        [InlineData(100)]
+        [InlineData(500)]
+        [InlineData(1000)]
+        [InlineData(5000)]
+        [InlineData(10000)]
+        [InlineData(20000)]
+        [InlineData(50000)]
+        public async Task TestCollectMultipleClientsToOneChannelServer(int clientsNumber)
         {
             Random rand = new Random(DateTimeOffset.Now.Millisecond);
             int serverPort = rand.Next(17000, 25000);
@@ -79,20 +79,9 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 clientsConnTask.Add(connTask);
                 connTask.Start();
             }
-
-            /*for (int c = 0; c < clientsNumber; c++)
-            {
-                // clients[c].Open();
-                int cNum = c;
-                Task connTask = new Task(() =>clients[cNum].Open());
-                clientsConnTask.Add(connTask);
-                connTask.Start();
-            }*/
             
-            // add delay until we got all client connected
             await Task.WhenAll(clientsConnTask);
             //await Task.WhenAny(new[]{Task.WhenAll(clientsConnTask), Task.Delay(delayClientsWait)});
-            // await Task.Delay(delayClientsWait);
             
             Assert.Equal(0, clientsConnectError);
             Assert.Equal(clientsNumber, clientsCounter);
@@ -178,7 +167,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 }*/
             }
             
-            Thread.Sleep(1000);
+            await Task.Delay(1000);
 
             for (int c = 0; c < clientsNumber; c++)
             {
