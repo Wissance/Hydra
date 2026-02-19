@@ -200,6 +200,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 clients[c].Close();
             }
             
+            
             OperationResult stopResult = await server.StopAsync();
             Assert.True(stopResult.Success);
 
