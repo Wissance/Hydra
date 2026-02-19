@@ -12,6 +12,13 @@ using Xunit.Abstractions;
 
 namespace Wissance.Hydra.Tcp.Tests.Transport
 {
+    /*
+     * With number of clients > 10000 there could be issue with error on Client.Open:
+     *    Error Socket error 10055
+     *    An operation on a socket could not be performed because the system lacked sufficient buffer space or because a queue was full
+     * This occurs on Windows machine and could be fixed by creating/updating
+     * HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\MaxUserPort as DWORD (32-bit) to 65535
+     */
     public class MultiChannelTcpServerTests
     {
 
@@ -40,12 +47,17 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             };
             int clientsCounter = 0;
             int clientsConnectError = 0;
+            int serverErrorsCounter = 0;
             
             ITcpServer server = new MultiChannelTcpServer(new[] { mainInsecureChannel }, new NullLoggerFactory(),
                 c =>
                 {
                     Interlocked.Increment(ref clientsCounter);
-                }, null, true);
+                }, null,
+                (errType, exc) =>
+                {
+                    Interlocked.Increment(ref serverErrorsCounter);
+                });
             
             Task<OperationResult> startTask = server.StartAsync();
             startTask.Wait();
@@ -60,12 +72,13 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
 
             // 3. Open N connections
             IList<Task> clientsConnTask = new List<Task>();
+            // when maxTask > 1 some of tests leads to less number of clients
             const int maxTasks = 1;
             int clientsPerTask = (int)Math.Ceiling((double)clientsNumber / maxTasks);
             for (int t = 0; t < maxTasks; t++)
             {
                 int tNum = t;
-                Task connTask = new Task(() =>
+                Task connTask = new Task(async () =>
                 {
                     int skip = tNum == 0 ? 0 : tNum * clientsPerTask;
                     IList<TestTcpClient> clientsManagedInTask = clients.Skip(skip).Take(clientsPerTask).ToList();
@@ -83,7 +96,8 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             await Task.WhenAll(clientsConnTask);
             //await Task.WhenAny(new[]{Task.WhenAll(clientsConnTask), Task.Delay(delayClientsWait)});
             
-            Assert.Equal(0, clientsConnectError);
+            //Assert.Equal(0, clientsConnectError);
+            Assert.Equal(0, serverErrorsCounter);
             Assert.Equal(clientsNumber, clientsCounter);
 
             for (int c = 0; c < clientsNumber; c++)
@@ -121,7 +135,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             };
 
             ITcpServer server = new MultiChannelTcpServer(new[] { mainInsecureChannel }, new NullLoggerFactory(), 
-                null, null, true);
+                null, null);
             int clientsCounter = 0;
             server.AssignConnectionHandler(c => 
             {
@@ -185,6 +199,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             {
                 clients[c].Close();
             }
+            
             
             OperationResult stopResult = await server.StopAsync();
             Assert.True(stopResult.Success);

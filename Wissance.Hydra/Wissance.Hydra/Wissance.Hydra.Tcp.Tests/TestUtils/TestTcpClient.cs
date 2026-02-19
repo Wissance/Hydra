@@ -7,7 +7,7 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
     public class TestTcpClient : IDisposable
     {
         public TestTcpClient(Boolean isAsync, String server, UInt16 port, Int32 readTimeout = DefaultReadTimeout,
-            Int32 writeTimeout = DefaultWriteTimeout)
+            Int32 writeTimeout = DefaultWriteTimeout, int connAttempts = 8)
         {
             Init(server, port, isAsync);
             _client = new TcpClient();
@@ -16,6 +16,7 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
             _client.ReceiveTimeout = _readTimeout;
             _client.SendTimeout = _writeTimeout;
             _client.NoDelay = true;
+            _connAttempts = connAttempts;
         }
 
         public Boolean Open(String server, UInt16 port, Boolean isAsync = true)
@@ -26,18 +27,21 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
 
         public Boolean Open()
         {
-            try
+            for (int attempt = 0; attempt < _connAttempts; attempt++)
             {
-                if (_isAsync)
-                    OpenAsync();
-                else OpenSync();
-                return _client.Connected;
+                try
+                {
+                    if (_isAsync)
+                        OpenAsync();
+                    else OpenSync();
+                    return _client.Connected;
+                }
+                catch (Exception e)
+                {
+                    Thread.Sleep(20);
+                }
             }
-            catch (Exception e)
-            {
-                return false;
-            }
-            
+            return false;
         }
 
         public void Close()
@@ -213,6 +217,7 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
         private readonly TcpClient _client;
         private readonly Int32 _readTimeout;
         private readonly Int32 _writeTimeout;
+        private readonly Int32 _connAttempts;
 
         private Int32 _bytesRead;
 

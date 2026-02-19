@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Wissance.Hydra.Common.Data;
 using Wissance.Hydra.Tcp.Client;
 using Wissance.Hydra.Tcp.Configuration;
+using Wissance.Hydra.Tcp.Errors;
 
 namespace Wissance.Hydra.Tcp.Transport
 {
@@ -33,11 +34,12 @@ namespace Wissance.Hydra.Tcp.Transport
     {
         public MultiChannelTcpServer(ServerChannelConfiguration[] channelsCfg, ILoggerFactory loggerFactory,
             Action<ClientInfo> connectionHandler = null, Func<byte[], ClientInfo, Task<byte[]>> packetHandler = null,
-            bool debug = false)
+            Action<ErrorType, Exception> errHandler = null)
         {
             _channelsCfg = channelsCfg;
             _connectionHandler = connectionHandler;
             _packetHandler = packetHandler;
+            _errHandler = errHandler;
             // todo(umv): init server channels
             _clients = new ConcurrentDictionary<Guid, ClientInfo>();
             _serverChannels = new ConcurrentDictionary<Guid, TcpChannel>();
@@ -97,7 +99,6 @@ namespace Wissance.Hydra.Tcp.Transport
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, true);
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.NoDelay, true);
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.DontFragment, true);
-                    
                     _serverChannels[channelCfg.ChannelId].Listener.Start(ConnectionsQueueSize);
                     _serverChannels[channelCfg.ChannelId].Status = true;
 
@@ -238,6 +239,11 @@ namespace Wissance.Hydra.Tcp.Transport
         {
             _connectionHandler = connectionHandler;
         }
+        
+        public void AssignErrorHandler(Action<ErrorType, Exception> errHandler)
+        {
+            _errHandler = errHandler;
+        }
 
         public async Task<OperationResult> SendDataAsync(Guid clientId, byte[] data)
         {
@@ -294,7 +300,7 @@ namespace Wissance.Hydra.Tcp.Transport
                 {
                     try
                     {
-                        TcpClient client = await context.Channel.Listener.AcceptTcpClientAsync();
+                        TcpClient client = await context.Channel.Listener.AcceptTcpClientAsync(context.Channel.Cancellation);
                         // we add new client and remove disconnected too ...
                         Guid clientId = Guid.NewGuid();
                         client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
@@ -313,6 +319,11 @@ namespace Wissance.Hydra.Tcp.Transport
                     catch (Exception e)
                     {
                         // todo (UMV): think about err handling
+                        if (_errHandler != null)
+                        {
+                            _errHandler(ErrorType.Connect, e);
+                        }
+
                         _logger.LogError($"An error \"{e.Message}\" occurred during processing client connect");
                     }
                 }
@@ -450,6 +461,7 @@ namespace Wissance.Hydra.Tcp.Transport
         private readonly ServerChannelConfiguration[] _channelsCfg;
         private readonly IDictionary<Guid, TcpChannel> _serverChannels;
         private Action<ClientInfo> _connectionHandler;
+        private Action<ErrorType, Exception> _errHandler;
         private Func<byte[], ClientInfo, Task<byte[]>> _packetHandler;
         private CancellationTokenSource _cancellationSource;
     }
