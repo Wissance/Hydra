@@ -29,7 +29,14 @@ namespace Wissance.Hydra.Tcp.Transport
         public TcpChannel Channel  { get; set; }
     }
 
-    // This class is a impl of multichannel Tcp Server (actual multi ports)
+
+    /// <summary>
+    ///     This class is an impl of multichannel Tcp Server (actual multi ports)
+    ///     To run TCP Server with Certificate we MUST create a .pfx certificate like this:
+    ///         1. openssl genrsa -out server.key 2048
+    ///         2. openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
+    ///         3. openssl pkcs12 -export -out certificate.pfx -inkey server.key -in server.crt
+    /// </summary>
     public class MultiChannelTcpServer : ITcpServer
     {
         public MultiChannelTcpServer(ServerChannelConfiguration[] channelsCfg, ILoggerFactory loggerFactory,
@@ -83,7 +90,8 @@ namespace Wissance.Hydra.Tcp.Transport
                         {
                             if (File.Exists(channelCfg.CertificatePath))
                             {
-                                _serverChannels[channelCfg.ChannelId].Certificate = X509Certificate.CreateFromCertFile(channelCfg.CertificatePath);
+                                _serverChannels[channelCfg.ChannelId].Certificate = X509Certificate.CreateFromSignedFile(channelCfg.CertificatePath);
+                                    //.CreateFromCertFile(channelCfg.CertificatePath);
                             }
                             else
                             {
@@ -369,7 +377,7 @@ namespace Wissance.Hydra.Tcp.Transport
                             bool hasIncomingData = client.Value.Client.Client.Poll(10, SelectMode.SelectRead);
                             if (hasIncomingData)
                             {
-                                const int clientBufferSize = 4096; // move this to cfg
+                                const int clientBufferSize = 8192; // move this to cfg
                                 const int chunkSize = 1024; // move this to cfg
                                 Byte[] buffer = new Byte[clientBufferSize];
                                 int totalBytesRead = 0;
@@ -417,6 +425,9 @@ namespace Wissance.Hydra.Tcp.Transport
                         catch (Exception e)
                         {
                             // todo (UMV): think about err handling
+                            if (_errHandler != null)
+                            {
+                            }
                         }
                     }
                 }

@@ -209,7 +209,92 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 clients[c].Dispose();
             }
         }
-        
+
+        [Theory]
+        [InlineData(50)]
+        [InlineData(100)]
+        [InlineData(500)]
+        public async Task TestInteractWithClientsWithTlsProtectedChannel(int clientsNumber)
+        {
+            Random rand = new Random((int)DateTimeOffset.Now.Ticks);
+            int serverPort = rand.Next(17000, 25000);
+            ServerChannelConfiguration mainInsecureChannel = new ServerChannelConfiguration()
+            {
+                IpAddress = "127.0.0.1",
+                Port = serverPort,
+                IsSecure = true,
+                CertificatePath = Path.GetFullPath(TestCertificatePath)
+            };
+
+            ITcpServer server = new MultiChannelTcpServer(new[] { mainInsecureChannel }, new NullLoggerFactory(), 
+                null, null);
+            int clientsCounter = 0;
+            server.AssignConnectionHandler(c => 
+            {
+                clientsCounter += 1;
+            });
+            server.AssignHandler( async (d, c) =>
+            {
+                //_testOutputHelper.WriteLine("Client connected!");
+                string msg = System.Text.Encoding.Default.GetString(d);
+                //_testOutputHelper.WriteLine($"Client {c.Id} send data: {msg}");
+                return d.Reverse().ToArray();
+            });
+            OperationResult startResult  = await server.StartAsync();
+            Assert.True(startResult.Success);
+            // 2. Create N TcpClients
+            IList<TestTcpClient> clients = new List<TestTcpClient>();
+            for (int c = 0; c < clientsNumber; c++)
+            {
+                clients.Add(new TestTcpClient(true, "127.0.0.1", (UInt16)serverPort));
+            }
+
+            // 3. Open N connections
+            for (int c = 0; c < clientsNumber; c++)
+            {
+                clients[c].Open();
+            }
+            
+            // add delay until we get 
+            Thread.Sleep(100);
+            
+            Assert.Equal(clientsNumber, clientsCounter);
+            
+            for (int c = 0; c < clientsNumber; c++)
+            {
+                clients[c].Write(new byte[] { 0x31, 0x39, 0x38, 0x34 });
+            }
+            
+            await Task.Delay(1000);
+
+            for (int c = 0; c < clientsNumber; c++)
+            {
+                byte[] buffer = new byte[32];
+                int bytesRead = 0;
+                clients[c].Read(buffer, out bytesRead);
+                if (bytesRead > 0)
+                {
+                    string msg = System.Text.Encoding.Default.GetString(buffer.Where(b => b  > 0).ToArray());
+                    _testOutputHelper.WriteLine($"Server respond back with: {msg}");
+                }
+            }
+
+            for (int c = 0; c < clientsNumber; c++)
+            {
+                clients[c].Close();
+            }
+            
+            
+            OperationResult stopResult = await server.StopAsync();
+            Assert.True(stopResult.Success);
+
+            for (int c = 0; c < clientsNumber; c++)
+            {
+                clients[c].Dispose();
+            }
+        }
+
+        private const string TestCertificatePath = "../../../testCerts/certificate.pfx";
         private readonly ITestOutputHelper _testOutputHelper;
     }
 }

@@ -27,4 +27,8 @@
       <ProjectReference Include="..\Wissance.Hydra.Tcp\Wissance.Hydra.Tcp.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="testCerts\" />
+    </ItemGroup>
+
 </Project>
