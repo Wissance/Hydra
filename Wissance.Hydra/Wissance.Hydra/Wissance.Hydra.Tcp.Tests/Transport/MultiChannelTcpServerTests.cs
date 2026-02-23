@@ -246,7 +246,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             IList<TestTcpClient> clients = new List<TestTcpClient>();
             for (int c = 0; c < clientsNumber; c++)
             {
-                clients.Add(new TestTcpClient(true, "127.0.0.1", (UInt16)serverPort));
+                clients.Add(new TestTcpClient(true, "127.0.0.1", (UInt16)serverPort, 100, 100, 8, true));
             }
 
             // 3. Open N connections
