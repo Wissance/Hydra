@@ -20,9 +20,9 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Install dependencies 
-        run: dotnet restore ./Wissance.Hydra
+        run: dotnet restore ./Wissance.Hydra/Wissance.Hydra
       - name: Build Solution
-        run: dotnet build --configuration Release ./Wissance.Hydra
+        run: dotnet build --configuration Release ./Wissance.Hydra/Wissance.Hydra
       - name: Run Wissance.Hydra.Tcp.Tests
-        run: dotnet test -c Release ./Wissance.Hydra/Wissance.Hydra.Tcp.Tests/Wissance.Hydra.Tcp.Tests.csproj
+        run: dotnet test -c Release ./Wissance.Hydra/Wissance.Hydra/Wissance.Hydra.Tcp.Tests/Wissance.Hydra.Tcp.Tests.csproj
 
