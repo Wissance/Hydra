@@ -25,6 +25,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
         public MultiChannelTcpServerTests(ITestOutputHelper testOutputHelper)
         {
             _testOutputHelper = testOutputHelper;
+            _localAddress = OperatingSystem.IsWindows() ? "127.0.0.1" : "0.0.0.0";
         }
 
         [Theory]
@@ -41,7 +42,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             int serverPort = rand.Next(17000, 25000);
             ServerChannelConfiguration mainInsecureChannel = new ServerChannelConfiguration()
             {
-                IpAddress = "127.0.0.1",
+                IpAddress = _localAddress,
                 Port = serverPort,
                 IsSecure = false
             };
@@ -67,7 +68,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             IList<TestTcpClient> clients = new List<TestTcpClient>();
             for (int c = 0; c < clientsNumber; c++)
             {
-                clients.Add(new TestTcpClient(true, "127.0.0.1", (UInt16)serverPort));
+                clients.Add(new TestTcpClient(true, _localAddress, (UInt16)serverPort));
             }
 
             // 3. Open N connections
@@ -126,7 +127,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             int serverPort = rand.Next(17000, 25000);
             ServerChannelConfiguration mainInsecureChannel = new ServerChannelConfiguration()
             {
-                IpAddress = "127.0.0.1",
+                IpAddress = _localAddress,
                 Port = serverPort,
                 IsSecure = false
             };
@@ -152,7 +153,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             IList<TestTcpClient> clients = new List<TestTcpClient>();
             for (int c = 0; c < clientsNumber; c++)
             {
-                clients.Add(new TestTcpClient(true, "127.0.0.1", (UInt16)serverPort));
+                clients.Add(new TestTcpClient(true, _localAddress, (UInt16)serverPort));
             }
 
             // 3. Open N connections
@@ -217,7 +218,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             int serverPort = rand.Next(17000, 25000);
             ServerChannelConfiguration mainInsecureChannel = new ServerChannelConfiguration()
             {
-                IpAddress = "127.0.0.1",
+                IpAddress = _localAddress,
                 Port = serverPort,
                 IsSecure = true,
                 CertificatePath = Path.GetFullPath(TestCertificatePath)
@@ -243,7 +244,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             IList<TestTcpClient> clients = new List<TestTcpClient>();
             for (int c = 0; c < clientsNumber; c++)
             {
-                clients.Add(new TestTcpClient(true, "127.0.0.1", (UInt16)serverPort, 20, 20, 4, true));
+                clients.Add(new TestTcpClient(true, _localAddress, (UInt16)serverPort, 20, 20, 4, true));
             }
 
             // 3. Open N connections
@@ -299,7 +300,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             int mainServerPort = rand.Next(17000, 25000);
             ServerChannelConfiguration mainInsecureChannel = new ServerChannelConfiguration()
             {
-                IpAddress = "127.0.0.1",
+                IpAddress = _localAddress,
                 Port = mainServerPort,
                 IsSecure = true,
                 CertificatePath = Path.GetFullPath(TestCertificatePath)
@@ -307,7 +308,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             int additionalServerPort = rand.Next(17000, 25000);
             ServerChannelConfiguration additionalNonSecureChannel = new ServerChannelConfiguration()
             {
-                IpAddress = "127.0.0.1",
+                IpAddress = _localAddress,
                 Port = additionalServerPort,
                 IsSecure = false
             };
@@ -333,12 +334,12 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             IList<TestTcpClient> clients = new List<TestTcpClient>();
             for (int c = 0; c < mainChannelClientsNumber; c++)
             {
-                clients.Add(new TestTcpClient(true, "127.0.0.1", (UInt16)mainServerPort, 20, 20, 4, true));
+                clients.Add(new TestTcpClient(true, _localAddress, (UInt16)mainServerPort, 20, 20, 4, true));
             }
             
             for (int c = 0; c < additionalChannelClientsNumber; c++)
             {
-                clients.Add(new TestTcpClient(true, "127.0.0.1", (UInt16)additionalServerPort, 20, 20, 4, false));
+                clients.Add(new TestTcpClient(true, _localAddress, (UInt16)additionalServerPort, 20, 20, 4, false));
             }
 
             // 3. Open N connections
@@ -379,8 +380,9 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             OperationResult stopResult = await server.StopAsync();
             Assert.True(stopResult.Success);
         }
-
+        
         private const string TestCertificatePath = "../../../testCerts/certificate.pfx";
+        private readonly string _localAddress;
         private readonly ITestOutputHelper _testOutputHelper;
     }
 }
