@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -25,7 +26,8 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
         public MultiChannelTcpServerTests(ITestOutputHelper testOutputHelper)
         {
             _testOutputHelper = testOutputHelper;
-            _localAddress = OperatingSystem.IsWindows() ? "127.0.0.1" : "0.0.0.0";
+            _localAddress = IPAddress.Loopback.ToString();
+                // OperatingSystem.IsWindows() ? "127.0.0.1" : "0.0.0.0";
             _testOutputHelper.WriteLine($"Local address is: {_localAddress}");
         }
 
