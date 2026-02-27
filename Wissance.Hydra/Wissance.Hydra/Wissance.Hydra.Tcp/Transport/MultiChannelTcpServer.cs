@@ -85,7 +85,7 @@ namespace Wissance.Hydra.Tcp.Transport
                         _serverChannels[channelCfg.ChannelId] = new TcpChannel()
                         {
                             Status = false,
-                            Listener = new TcpListener(IPAddress.Parse(channelCfg.IpAddress), channelCfg.Port)
+                            Listener = new TcpListener(IPAddress.Parse(channelCfg.IpAddress), 0) // channelCfg.Port)
                         };
                         if (channelCfg.IsSecure)
                         {
