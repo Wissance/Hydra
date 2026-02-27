@@ -149,6 +149,10 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 
             });
             OperationResult startResult  = await server.StartAsync();
+            if (!startResult.Success)
+            {
+                _testOutputHelper.WriteLine(startResult.Message);
+            }
             Assert.True(startResult.Success);
             // 2. Create N TcpClients
             IList<TestTcpClient> clients = new List<TestTcpClient>();
@@ -240,6 +244,11 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 return d.Reverse().ToArray();
             });
             OperationResult startResult  = await server.StartAsync();
+            if (!startResult.Success)
+            {
+                _testOutputHelper.WriteLine(startResult.Message);
+            }
+
             Assert.True(startResult.Success);
             // 2. Create N TcpClients
             IList<TestTcpClient> clients = new List<TestTcpClient>();
@@ -330,6 +339,10 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 return d.Reverse().ToArray();
             });
             OperationResult startResult  = await server.StartAsync();
+            if (!startResult.Success)
+            {
+                _testOutputHelper.WriteLine(startResult.Message);
+            }
             Assert.True(startResult.Success);
             
             IList<TestTcpClient> clients = new List<TestTcpClient>();
