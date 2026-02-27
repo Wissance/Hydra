@@ -19,7 +19,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
      * This occurs on Windows machine and could be fixed by creating/updating
      * HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\MaxUserPort as DWORD (32-bit) to 65535
      */
-    public class MultiChannelTcpServerTests
+    public class MultiChannelTcpServerTests : IDisposable
     {
 
         public MultiChannelTcpServerTests(ITestOutputHelper testOutputHelper)
@@ -27,6 +27,14 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             _testOutputHelper = testOutputHelper;
             _localAddress = OperatingSystem.IsWindows() ? "127.0.0.1" : "0.0.0.0";
             _testOutputHelper.WriteLine($"Local address is: {_localAddress}");
+        }
+
+        public void Dispose()
+        {
+            if (_server != null)
+            {
+                _server.Dispose();
+            }
         }
 
         [Theory]
@@ -53,7 +61,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             int clientsConnectError = 0;
             int serverErrorsCounter = 0;
             
-            ITcpServer server = new MultiChannelTcpServer(new[] { mainInsecureChannel }, new NullLoggerFactory(),
+            _server = new MultiChannelTcpServer(new[] { mainInsecureChannel }, new LoggerFactory(),
                 c =>
                 {
                     Interlocked.Increment(ref clientsCounter);
@@ -63,7 +71,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                     Interlocked.Increment(ref serverErrorsCounter);
                 });
             
-            Task<OperationResult> startTask = server.StartAsync();
+            Task<OperationResult> startTask = _server.StartAsync();
             startTask.Wait();
             OperationResult startResult = startTask.Result;
             Assert.True(startResult.Success);
@@ -106,11 +114,10 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 clients[c].Close();
             }
 
-            Task<OperationResult> stopTask = server.StopAsync();
+            Task<OperationResult> stopTask = _server.StopAsync();
             stopTask.Wait();
             OperationResult stopResult = stopTask.Result;
             Assert.True(stopResult.Success);
-            server.Dispose();
             
             for (int c = 0; c < clientsNumber; c++)
             {
@@ -136,14 +143,14 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             };
             _testOutputHelper.WriteLine($"Server port is: {serverPort}");
 
-            ITcpServer server = new MultiChannelTcpServer(new[] { mainInsecureChannel }, new NullLoggerFactory(), 
+            _server = new MultiChannelTcpServer(new[] { mainInsecureChannel }, new LoggerFactory(), 
                 null, null);
             int clientsCounter = 0;
-            server.AssignConnectionHandler(c => 
+            _server.AssignConnectionHandler(c => 
             {
                 Interlocked.Increment(ref clientsCounter);
             });
-            server.AssignHandler( async (d, c) =>
+            _server.AssignHandler( async (d, c) =>
             {
                 //_testOutputHelper.WriteLine("Client connected!");
                 string msg = System.Text.Encoding.Default.GetString(d);
@@ -151,7 +158,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 return d.Reverse().ToArray();
                 
             });
-            OperationResult startResult  = await server.StartAsync();
+            OperationResult startResult  = await _server.StartAsync();
             if (!startResult.Success)
             {
                 _testOutputHelper.WriteLine(startResult.Message);
@@ -207,7 +214,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             }
             
             
-            OperationResult stopResult = await server.StopAsync();
+            OperationResult stopResult = await _server.StopAsync();
             Assert.True(stopResult.Success);
 
             for (int c = 0; c < clientsNumber; c++)
@@ -233,21 +240,21 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             };
             _testOutputHelper.WriteLine($"Server port is: {serverPort}");
             
-            ITcpServer server = new MultiChannelTcpServer(new[] { mainSecureChannel }, new NullLoggerFactory(), 
+            _server = new MultiChannelTcpServer(new[] { mainSecureChannel }, new LoggerFactory(), 
                 null, null);
             int clientsCounter = 0;
-            server.AssignConnectionHandler(c => 
+            _server.AssignConnectionHandler(c => 
             {
                 Interlocked.Increment(ref clientsCounter);
             });
-            server.AssignHandler( async (d, c) =>
+            _server.AssignHandler( async (d, c) =>
             {
-                //_testOutputHelper.WriteLine("Client connected!");
-                string msg = System.Text.Encoding.Default.GetString(d);
-                //_testOutputHelper.WriteLine($"Client {c.Id} send data: {msg}");
+                // _testOutputHelper.WriteLine("Client connected!");
+                // string msg = System.Text.Encoding.Default.GetString(d);
+                // _testOutputHelper.WriteLine($"Client {c.Id} send data: {msg}");
                 return d.Reverse().ToArray();
             });
-            OperationResult startResult  = await server.StartAsync();
+            OperationResult startResult  = await _server.StartAsync();
             if (!startResult.Success)
             {
                 _testOutputHelper.WriteLine(startResult.Message);
@@ -284,11 +291,11 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 byte[] buffer = new byte[32];
                 int bytesRead = 0;
                 clients[c].Read(buffer, out bytesRead);
-                if (bytesRead > 0)
+                /*if (bytesRead > 0)
                 {
                     string msg = System.Text.Encoding.Default.GetString(buffer.Where(b => b  > 0).ToArray());
                     _testOutputHelper.WriteLine($"Server respond back with: {msg}");
-                }
+                }*/
             }
 
             for (int c = 0; c < clientsNumber; c++)
@@ -297,7 +304,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             }
             
             
-            OperationResult stopResult = await server.StopAsync();
+            OperationResult stopResult = await _server.StopAsync();
             Assert.True(stopResult.Success);
 
             for (int c = 0; c < clientsNumber; c++)
@@ -329,22 +336,22 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
             
             _testOutputHelper.WriteLine($"Server port are: ({mainServerPort} , {additionalServerPort})");
             
-            ITcpServer server = new MultiChannelTcpServer(new[] { mainSecureChannel, additionalNonSecureChannel }, 
+            _server = new MultiChannelTcpServer(new[] { mainSecureChannel, additionalNonSecureChannel }, 
                 new NullLoggerFactory(), 
                 null, null);
             int clientsCounter = 0;
-            server.AssignConnectionHandler(c => 
+            _server.AssignConnectionHandler(c => 
             {
                 Interlocked.Increment(ref clientsCounter);
             });
-            server.AssignHandler( async (d, c) =>
+            _server.AssignHandler( async (d, c) =>
             {
-                //_testOutputHelper.WriteLine("Client connected!");
-                string msg = System.Text.Encoding.Default.GetString(d);
-                //_testOutputHelper.WriteLine($"Client {c.Id} send data: {msg}");
+                // _testOutputHelper.WriteLine("Client connected!");
+                // string msg = System.Text.Encoding.Default.GetString(d);
+                // _testOutputHelper.WriteLine($"Client {c.Id} send data: {msg}");
                 return d.Reverse().ToArray();
             });
-            OperationResult startResult  = await server.StartAsync();
+            OperationResult startResult  = await _server.StartAsync();
             if (!startResult.Success)
             {
                 _testOutputHelper.WriteLine(startResult.Message);
@@ -385,11 +392,11 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 byte[] buffer = new byte[32];
                 int bytesRead = 0;
                 clients[c].Read(buffer, out bytesRead);
-                if (bytesRead > 0)
+                /*if (bytesRead > 0)
                 {
                     string msg = System.Text.Encoding.Default.GetString(buffer.Where(b => b  > 0).ToArray());
                     _testOutputHelper.WriteLine($"Server respond back with: {msg}");
-                }
+                }*/
             }
 
             for (int c = 0; c < clients.Count; c++)
@@ -397,12 +404,13 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 clients[c].Close();
             }
             
-            OperationResult stopResult = await server.StopAsync();
+            OperationResult stopResult = await _server.StopAsync();
             Assert.True(stopResult.Success);
         }
         
         private const string TestCertificatePath = "../../../testCerts/certificate.pfx";
         private readonly string _localAddress;
         private readonly ITestOutputHelper _testOutputHelper;
+        private ITcpServer _server;
     }
 }
