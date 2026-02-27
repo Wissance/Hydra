@@ -25,7 +25,8 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
         public MultiChannelTcpServerTests(ITestOutputHelper testOutputHelper)
         {
             _testOutputHelper = testOutputHelper;
-            _localAddress = OperatingSystem.IsWindows() ? "127.0.0.1" : "0.0.0.0";
+            _localAddress = "127.0.0.1";
+                //OperatingSystem.IsWindows() ? "127.0.0.1" : "0.0.0.0";
             _testOutputHelper.WriteLine($"Local address is: {_localAddress}");
         }
 
