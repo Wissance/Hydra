@@ -47,6 +47,8 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 Port = serverPort,
                 IsSecure = false
             };
+            _testOutputHelper.WriteLine($"Server port is: {serverPort}");
+            
             int clientsCounter = 0;
             int clientsConnectError = 0;
             int serverErrorsCounter = 0;
@@ -132,6 +134,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 Port = serverPort,
                 IsSecure = false
             };
+            _testOutputHelper.WriteLine($"Server port is: {serverPort}");
 
             ITcpServer server = new MultiChannelTcpServer(new[] { mainInsecureChannel }, new NullLoggerFactory(), 
                 null, null);
@@ -221,15 +224,16 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
         {
             Random rand = new Random((int)DateTimeOffset.Now.Ticks);
             int serverPort = rand.Next(17000, 25000);
-            ServerChannelConfiguration mainInsecureChannel = new ServerChannelConfiguration()
+            ServerChannelConfiguration mainSecureChannel = new ServerChannelConfiguration()
             {
                 IpAddress = _localAddress,
                 Port = serverPort,
                 IsSecure = true,
                 CertificatePath = Path.GetFullPath(TestCertificatePath)
             };
-
-            ITcpServer server = new MultiChannelTcpServer(new[] { mainInsecureChannel }, new NullLoggerFactory(), 
+            _testOutputHelper.WriteLine($"Server port is: {serverPort}");
+            
+            ITcpServer server = new MultiChannelTcpServer(new[] { mainSecureChannel }, new NullLoggerFactory(), 
                 null, null);
             int clientsCounter = 0;
             server.AssignConnectionHandler(c => 
@@ -308,7 +312,7 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
         {
             Random rand = new Random((int)DateTimeOffset.Now.Ticks);
             int mainServerPort = rand.Next(17000, 25000);
-            ServerChannelConfiguration mainInsecureChannel = new ServerChannelConfiguration()
+            ServerChannelConfiguration mainSecureChannel = new ServerChannelConfiguration()
             {
                 IpAddress = _localAddress,
                 Port = mainServerPort,
@@ -323,7 +327,9 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 IsSecure = false
             };
             
-            ITcpServer server = new MultiChannelTcpServer(new[] { mainInsecureChannel, additionalNonSecureChannel }, 
+            _testOutputHelper.WriteLine($"Server port are: ({mainServerPort} , {additionalServerPort})");
+            
+            ITcpServer server = new MultiChannelTcpServer(new[] { mainSecureChannel, additionalNonSecureChannel }, 
                 new NullLoggerFactory(), 
                 null, null);
             int clientsCounter = 0;
