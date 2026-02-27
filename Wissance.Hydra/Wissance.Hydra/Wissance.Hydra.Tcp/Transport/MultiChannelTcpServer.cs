@@ -107,7 +107,9 @@ namespace Wissance.Hydra.Tcp.Transport
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, true);
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.NoDelay, true);
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.DontFragment, true);
-                    _serverChannels[channelCfg.ChannelId].Listener.Start(ConnectionsQueueSize);
+                    _serverChannels[channelCfg.ChannelId].Listener.ExclusiveAddressUse = true;
+                    _serverChannels[channelCfg.ChannelId].Listener.Start();
+                    // _serverChannels[channelCfg.ChannelId].Listener.Start(ConnectionsQueueSize);
                     _serverChannels[channelCfg.ChannelId].Status = true;
 
                     _serverChannels[channelCfg.ChannelId].ChannelProcessor.IsBackground = true;
