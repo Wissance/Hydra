@@ -9,6 +9,10 @@ on:
 env:
   DOTNET_VERSION: '6.0.x'
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   build-and-test:
     name: Building Wissance.Hydra and running Tests
