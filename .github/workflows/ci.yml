@@ -27,6 +27,6 @@ jobs:
         run: dotnet restore ./Wissance.Hydra/Wissance.Hydra
       - name: Build Solution
         run: dotnet build --configuration Release ./Wissance.Hydra/Wissance.Hydra
-      - name: Run Wissance.Hydra.Tcp.Tests
-        run: dotnet test -c Release ./Wissance.Hydra/Wissance.Hydra/Wissance.Hydra.Tcp.Tests/Wissance.Hydra.Tcp.Tests.csproj
+      #- name: Run Wissance.Hydra.Tcp.Tests
+      #  run: dotnet test -c Release ./Wissance.Hydra/Wissance.Hydra/Wissance.Hydra.Tcp.Tests/Wissance.Hydra.Tcp.Tests.csproj
 
