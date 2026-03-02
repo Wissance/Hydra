@@ -1,9 +1,9 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build-test
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build-test
 
-WORKDIR /Wissance.Hydra/Wissance.Hydra
-COPY . .
+WORKDIR /test
+COPY Wissance.Hydra/Wissance.Hydra .
 SHELL [ "bash", "-c" ]
-RUN dotnet build
+RUN dotnet build Wissance.Hydra.sln
 ENTRYPOINT error=0; \
 for dir in *.Tests; do \
     dotnet test --logger "junit;LogFilePath=/TestResults/$dir.xml" $dir 2>&1 > /TestResults/$dir.log; \
