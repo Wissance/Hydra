@@ -104,10 +104,11 @@ namespace Wissance.Hydra.Tcp.Transport
                     _serverChannels[channelCfg.ChannelId].ChannelProcessor = new Thread(ProcessServerChannel);
                         //new Task(ProcessServerChannel, new TcpChannelContext(channelCfg.ChannelId, _serverChannels[channelCfg.ChannelId]),
                                                                                       //_serverChannels[channelCfg.ChannelId].Cancellation);
-                    _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, true);
+                    _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, false);
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.NoDelay, true);
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.DontFragment, true);
-                    _serverChannels[channelCfg.ChannelId].Listener.ExclusiveAddressUse = true;
+                    // _serverChannels[channelCfg.ChannelId].Listener.AllowNatTraversal(true);
+                    // _serverChannels[channelCfg.ChannelId].Listener.ExclusiveAddressUse = true;
                     _serverChannels[channelCfg.ChannelId].Listener.Start();
                     // _serverChannels[channelCfg.ChannelId].Listener.Start(ConnectionsQueueSize);
                     _serverChannels[channelCfg.ChannelId].Status = true;
@@ -126,7 +127,8 @@ namespace Wissance.Hydra.Tcp.Transport
             catch (Exception e)
             {
                 _status = false;
-                string reason = $"An error occurred during Tcp server starting: {e.Message}";
+                string additional = e.InnerException?.Message;
+                string reason = $"An error occurred during Tcp server starting: {e.Message} {additional}";
                 _logger.LogError(reason);
                 foreach (ServerChannelConfiguration channelCfg in _channelsCfg)
                 {

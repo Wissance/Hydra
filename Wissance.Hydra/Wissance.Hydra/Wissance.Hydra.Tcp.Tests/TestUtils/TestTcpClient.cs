@@ -13,6 +13,7 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
         {
             Init(server, port, isAsync, isSecure);
             _client = new TcpClient();
+            _client.ExclusiveAddressUse = false;
             _readTimeout = readTimeout > 0 ? readTimeout : DefaultReadTimeout;
             _writeTimeout = writeTimeout > 0 ? writeTimeout : DefaultWriteTimeout;
             _client.ReceiveTimeout = _readTimeout;
@@ -33,14 +34,14 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
             {
                 try
                 {
-                    if (_isAsync)
-                        OpenAsync();
-                    else OpenSync();
-                    return _client.Connected;
+                    bool result = _isAsync ? OpenAsync() : OpenSync();
+                    if (result)
+                        return true;
+                    Thread.Sleep(20 * (attempt + 1));
                 }
                 catch (Exception e)
                 {
-                    Thread.Sleep(20);
+                    Thread.Sleep(20 * (attempt + 1));
                 }
             }
             return false;
@@ -74,16 +75,34 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
             return WriteSync(data);
         }
 
-        private void OpenSync()
+        private bool OpenSync()
         {
-            _client.Connect(_host, _port);
+            try
+            {
+                _client.Connect(_host, _port);
+                return _client.Connected;
+            }
+            catch (Exception e)
+            {
+                return false;
+            }
+            
         }
 
-        private void OpenAsync()
+        private bool OpenAsync()
         {
-            _connectCompleted.Reset();
-            _client.BeginConnect(_host, _port, OpenAsyncCallback, _client);
-            _connectCompleted.Wait(DefaultConnectTimeout);
+            try
+            {
+                _connectCompleted.Reset();
+                _client.BeginConnect(_host, _port, OpenAsyncCallback, _client);
+                _connectCompleted.Wait(DefaultConnectTimeout);
+                return _client.Connected;
+            }
+            catch (Exception e)
+            {
+                return false;
+            }
+
         }
 
         private void Init(String server, UInt16 port, Boolean isAsync, Boolean isSecure)
@@ -98,12 +117,21 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
 
         private void OpenAsyncCallback(IAsyncResult result)
         {
-            TcpClient client = (result.AsyncState as TcpClient);
-            if (client == null)
-                // ReSharper disable once NotResolvedInText
-                throw new ArgumentNullException("client");
-            client.EndConnect(result);
-            _connectCompleted.Set();
+            try
+            {
+
+                TcpClient client = (result.AsyncState as TcpClient);
+                if (client == null)
+                    // ReSharper disable once NotResolvedInText
+                    throw new ArgumentNullException("client");
+                client.EndConnect(result);
+                _connectCompleted.Set();
+
+            }
+            catch (Exception e)
+            {
+                //do nothing yet
+            }
         }
 
         private Boolean WriteSync(Byte[] data)
