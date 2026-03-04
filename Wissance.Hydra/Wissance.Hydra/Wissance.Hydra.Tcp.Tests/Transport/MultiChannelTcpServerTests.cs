@@ -27,14 +27,14 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
         {
             _testOutputHelper = testOutputHelper;
             _localAddress = IPAddress.Loopback.ToString();
-            _testOutputHelper.WriteLine($"Local address is: {_localAddress}");
             string isDocker = Environment.GetEnvironmentVariable(IsContainerizedEnvVar);
             if (!string.IsNullOrEmpty(isDocker) && isDocker.ToLower() == "true")
             {
                 _testOutputHelper.WriteLine("Test are running inside a Docker container.");
                 _isRunningInContainer = true;
+                _localAddress = "0.0.0.0";
             }
-
+            _testOutputHelper.WriteLine($"Local address is: {_localAddress}");
             _connErrorsRatio = 0.05;
         }
 
@@ -57,7 +57,6 @@ namespace Wissance.Hydra.Tcp.Tests.Transport
                 IpAddress = _localAddress,
                 Port = serverPort,
                 IsSecure = false,
-                // Prefix = _isRunningInContainer ? 
             };
             _testOutputHelper.WriteLine($"Server port is: {serverPort}");
             
