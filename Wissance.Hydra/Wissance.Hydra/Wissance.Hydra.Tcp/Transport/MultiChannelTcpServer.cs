@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +30,14 @@ namespace Wissance.Hydra.Tcp.Transport
         public TcpChannel Channel  { get; set; }
     }
 
-    // This class is a impl of multichannel Tcp Server (actual multi ports)
+
+    /// <summary>
+    ///     This class is an impl of multichannel Tcp Server (actual multi ports)
+    ///     To run TCP Server with Certificate we MUST create a .pfx certificate like this:
+    ///         1. openssl genrsa -out server.key 2048
+    ///         2. openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
+    ///         3. openssl pkcs12 -export -out certificate.pfx -inkey server.key -in server.crt
+    /// </summary>
     public class MultiChannelTcpServer : ITcpServer
     {
         public MultiChannelTcpServer(ServerChannelConfiguration[] channelsCfg, ILoggerFactory loggerFactory,
@@ -96,10 +104,13 @@ namespace Wissance.Hydra.Tcp.Transport
                     _serverChannels[channelCfg.ChannelId].ChannelProcessor = new Thread(ProcessServerChannel);
                         //new Task(ProcessServerChannel, new TcpChannelContext(channelCfg.ChannelId, _serverChannels[channelCfg.ChannelId]),
                                                                                       //_serverChannels[channelCfg.ChannelId].Cancellation);
-                    _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, true);
+                    _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, false);
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.NoDelay, true);
                     _serverChannels[channelCfg.ChannelId].Listener.Server.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.DontFragment, true);
-                    _serverChannels[channelCfg.ChannelId].Listener.Start(ConnectionsQueueSize);
+                    // _serverChannels[channelCfg.ChannelId].Listener.AllowNatTraversal(true);
+                    // _serverChannels[channelCfg.ChannelId].Listener.ExclusiveAddressUse = true;
+                    _serverChannels[channelCfg.ChannelId].Listener.Start();
+                    // _serverChannels[channelCfg.ChannelId].Listener.Start(ConnectionsQueueSize);
                     _serverChannels[channelCfg.ChannelId].Status = true;
 
                     _serverChannels[channelCfg.ChannelId].ChannelProcessor.IsBackground = true;
@@ -116,7 +127,8 @@ namespace Wissance.Hydra.Tcp.Transport
             catch (Exception e)
             {
                 _status = false;
-                string reason = $"An error occurred during Tcp server starting: {e.Message}";
+                string additional = e.InnerException?.Message;
+                string reason = $"An error occurred during Tcp server starting: {e.Message} {additional}";
                 _logger.LogError(reason);
                 foreach (ServerChannelConfiguration channelCfg in _channelsCfg)
                 {
@@ -262,7 +274,7 @@ namespace Wissance.Hydra.Tcp.Transport
                 ClientInfo client = _clients[clientId];
                 ServerChannelConfiguration channelCfg = _channelsCfg.First(c => c.ChannelId == client.ChannelId);
                 TcpChannel channel = _serverChannels[client.ChannelId];
-                Stream ns = GetChannelStream(client, channelCfg.IsSecure, channel);
+                Stream ns = await GetChannelStream(client, channelCfg.IsSecure, channel);
                 await ns.WriteAsync(data, 0, data.Length, _cancellationSource.Token);
                 return new OperationResult()
                 {
@@ -369,7 +381,7 @@ namespace Wissance.Hydra.Tcp.Transport
                             bool hasIncomingData = client.Value.Client.Client.Poll(10, SelectMode.SelectRead);
                             if (hasIncomingData)
                             {
-                                const int clientBufferSize = 4096; // move this to cfg
+                                const int clientBufferSize = 8192; // move this to cfg
                                 const int chunkSize = 1024; // move this to cfg
                                 Byte[] buffer = new Byte[clientBufferSize];
                                 int totalBytesRead = 0;
@@ -378,7 +390,7 @@ namespace Wissance.Hydra.Tcp.Transport
                                 ServerChannelConfiguration channelCfg = _channelsCfg.First(c => c.ChannelId == client.Value.ChannelId);
                                 TcpChannel channel = _serverChannels[client.Value.ChannelId];
 
-                                Stream ns = GetChannelStream(client.Value, channelCfg.IsSecure, channel);
+                                Stream ns = await GetChannelStream(client.Value, channelCfg.IsSecure, channel);
                                 
                                 int offset = 0;
                                 int portion = clientBufferSize;
@@ -417,6 +429,9 @@ namespace Wissance.Hydra.Tcp.Transport
                         catch (Exception e)
                         {
                             // todo (UMV): think about err handling
+                            if (_errHandler != null)
+                            {
+                            }
                         }
                     }
                 }
@@ -440,15 +455,26 @@ namespace Wissance.Hydra.Tcp.Transport
 
         }
 
-        private Stream GetChannelStream(ClientInfo client, bool isSecure, TcpChannel channel)
+        private async Task<Stream> GetChannelStream(ClientInfo client, bool isSecure, TcpChannel channel)
         {
-            NetworkStream ns = client.Client.GetStream();
-            if (!isSecure)
-                return ns;
-            SslStream sslStream = new SslStream(ns, false);
-            sslStream.AuthenticateAsServer(channel.Certificate, false, true);
-            // https://learn.microsoft.com/en-us/dotnet/api/system.net.security.sslstream?view=net-7.0
-            return sslStream;
+            try
+            {
+                NetworkStream ns = client.Client.GetStream();
+                if (!isSecure)
+                    return ns;
+                SslStream sslStream = new SslStream(ns, false);
+                await sslStream.AuthenticateAsServerAsync(channel.Certificate, false,
+                    SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12 | SslProtocols.Tls13, true);
+                // sslStream.AuthenticateAsServer(channel.Certificate, false, true);
+                // https://learn.microsoft.com/en-us/dotnet/api/system.net.security.sslstream?view=net-7.0
+                return sslStream;
+
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning($"An error occurred during getting client \"{client.Id}\" stream,\"{e.Message}\" for channel: \"{client.ChannelId}\"");
+                return null;
+            }
         }
 
         private const int ConnectionsQueueSize = 100000;

@@ -1,5 +1,7 @@
 using System;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 
 namespace Wissance.Hydra.Tcp.Tests.TestUtils
@@ -7,10 +9,11 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
     public class TestTcpClient : IDisposable
     {
         public TestTcpClient(Boolean isAsync, String server, UInt16 port, Int32 readTimeout = DefaultReadTimeout,
-            Int32 writeTimeout = DefaultWriteTimeout, int connAttempts = 8)
+            Int32 writeTimeout = DefaultWriteTimeout, int connAttempts = 8, Boolean isSecure = false)
         {
-            Init(server, port, isAsync);
+            Init(server, port, isAsync, isSecure);
             _client = new TcpClient();
+            _client.ExclusiveAddressUse = false;
             _readTimeout = readTimeout > 0 ? readTimeout : DefaultReadTimeout;
             _writeTimeout = writeTimeout > 0 ? writeTimeout : DefaultWriteTimeout;
             _client.ReceiveTimeout = _readTimeout;
@@ -19,9 +22,9 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
             _connAttempts = connAttempts;
         }
 
-        public Boolean Open(String server, UInt16 port, Boolean isAsync = true)
+        public Boolean Open(String server, UInt16 port, Boolean isAsync = true, Boolean isSecure = false)
         {
-            Init(server, port, isAsync);
+            Init(server, port, isAsync, isSecure);
             return Open();
         }
 
@@ -31,14 +34,14 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
             {
                 try
                 {
-                    if (_isAsync)
-                        OpenAsync();
-                    else OpenSync();
-                    return _client.Connected;
+                    bool result = _isAsync ? OpenAsync() : OpenSync();
+                    if (result)
+                        return true;
+                    Thread.Sleep(20 * (attempt + 1));
                 }
                 catch (Exception e)
                 {
-                    Thread.Sleep(20);
+                    Thread.Sleep(20 * (attempt + 1));
                 }
             }
             return false;
@@ -72,35 +75,63 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
             return WriteSync(data);
         }
 
-        private void OpenSync()
+        private bool OpenSync()
         {
-            _client.Connect(_host, _port);
+            try
+            {
+                _client.Connect(_host, _port);
+                return _client.Connected;
+            }
+            catch (Exception e)
+            {
+                return false;
+            }
+            
         }
 
-        private void OpenAsync()
+        private bool OpenAsync()
         {
-            _connectCompleted.Reset();
-            _client.BeginConnect(_host, _port, OpenAsyncCallback, _client);
-            _connectCompleted.Wait(DefaultConnectTimeout);
+            try
+            {
+                _connectCompleted.Reset();
+                _client.BeginConnect(_host, _port, OpenAsyncCallback, _client);
+                _connectCompleted.Wait(DefaultConnectTimeout);
+                return _client.Connected;
+            }
+            catch (Exception e)
+            {
+                return false;
+            }
+
         }
 
-        private void Init(String server, UInt16 port, Boolean isAsync)
+        private void Init(String server, UInt16 port, Boolean isAsync, Boolean isSecure)
         {
             if (String.IsNullOrEmpty(server))
                 throw new ArgumentNullException("server");
             _isAsync = isAsync;
+            _isSecure = isSecure;
             _host = server;
             _port = port;
         }
 
         private void OpenAsyncCallback(IAsyncResult result)
         {
-            TcpClient client = (result.AsyncState as TcpClient);
-            if (client == null)
-                // ReSharper disable once NotResolvedInText
-                throw new ArgumentNullException("client");
-            client.EndConnect(result);
-            _connectCompleted.Set();
+            try
+            {
+
+                TcpClient client = (result.AsyncState as TcpClient);
+                if (client == null)
+                    // ReSharper disable once NotResolvedInText
+                    throw new ArgumentNullException("client");
+                client.EndConnect(result);
+                _connectCompleted.Set();
+
+            }
+            catch (Exception e)
+            {
+                //do nothing yet
+            }
         }
 
         private Boolean WriteSync(Byte[] data)
@@ -147,7 +178,7 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
         {
             bytesRead = 0;
             _bytesRead = 0;
-            NetworkStream stream = _client.GetStream();
+            Stream stream = GetStream(_client);
             Int32 errorsNumber = 0;
             for (Int32 retryNumber = 0; retryNumber < ReadRetriesNumber; retryNumber++)
             {
@@ -174,7 +205,7 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
         private Boolean ReadAsync(Byte[] data, out Int32 bytesRead)
         {
             bytesRead = 0;
-            NetworkStream stream = _client.GetStream();
+            Stream stream = GetStream(_client);
             try
             {
                 _bytesRead = 0;
@@ -190,7 +221,7 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
                 bytesRead = _bytesRead;
                 return true;
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 return false;
             }
@@ -202,9 +233,34 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
             if (client == null)
                 // ReSharper disable once NotResolvedInText
                 throw new ArgumentNullException("client");
-            _bytesRead += client.GetStream().EndRead(result);
+            _bytesRead += GetStream(client).EndRead(result);
             _readCompleted.Set();
         }
+
+        private Stream GetStream(TcpClient client)
+        {
+            try
+            {
+                NetworkStream ns = client.GetStream();
+                if (!_isSecure)
+                    return ns;
+                SslStream sslStream = new SslStream(ns, false,  ValidateServerCertificate, null);
+                sslStream.AuthenticateAsClient(_host);
+                return sslStream;
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
+
+        }
+        
+        public bool ValidateServerCertificate(object sender, X509Certificate certificate,
+            X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        {
+            return true;
+        }
+
 
         private const Int32 DefaultConnectTimeout = 2000;
         private const Int32 DefaultReadTimeout = 1000;
@@ -212,6 +268,7 @@ namespace Wissance.Hydra.Tcp.Tests.TestUtils
         private const Int32 ReadRetriesNumber = 16;
 
         private Boolean _isAsync;
+        private Boolean _isSecure;
         private String _host;
         private UInt16 _port;
         private readonly TcpClient _client;
