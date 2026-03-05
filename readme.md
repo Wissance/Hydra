@@ -46,6 +46,7 @@ OperationResult stopResult = await server.StopAsync();
 Hydra has been load-tested to handle up to 50000 concurrent client connections across its channels. Performance metrics depend on hardware, network configuration, and the workload (e.g., message frequency, size).
 Tests could be running in a Docker container as follows:
 1. Build docker container - `docker build -t hydra.tests -f .\test.Dockerfile .`
+2. Run tests `docker run -i -t hydra.tests `
 
 ## :chart_with_upwards_trend: Plans
 
